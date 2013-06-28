@@ -14,6 +14,7 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.madebcn.android.compass.CompassActivity.SimulationView;
 
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -45,10 +46,13 @@ public class MadeListener implements SensorEventListener {
   double pitch = 0;
   double roll = 0;
   
+  private SimulationView view;
+  
   String ip;
   
-  public MadeListener()
+  public MadeListener(SimulationView view)
   {  
+	this.view=view;
     lastSentInfoTime = System.currentTimeMillis();
     lastSentAngle = 183;
   }
@@ -103,7 +107,7 @@ public class MadeListener implements SensorEventListener {
             pitch = Math.toDegrees(orientVals[1]);
             roll = Math.toDegrees(orientVals[2]);
             
-            absoluteAzimuth = (int) (Math.round(azimuth));
+            absoluteAzimuth = (int) normalize((Math.round(azimuth)));
             //Log.v(TAG, "Angle = "+absoluteAzimuth);
             long elapseTime = System.currentTimeMillis() - lastSentInfoTime;
 
@@ -113,11 +117,14 @@ public class MadeListener implements SensorEventListener {
             {
               lastSentInfoTime=System.currentTimeMillis(); 
               int differenceWithOld = Math.abs((int) (absoluteAzimuth - lastSentAngle));
-              if(differenceWithOld>=3 && absoluteAzimuth<=180)
+              //Log.v(TAG, "old="+lastSentAngle+" now="+absoluteAzimuth+" difference="+differenceWithOld);
+              view.updateAnlge((int)absoluteAzimuth);
+              if(differenceWithOld>=4)
               {
-                lastSentAngle = (int)absoluteAzimuth;
-                String url = generateServerPath(normalize(absoluteAzimuth));
-                Log.d(TAG, "trying to "+url);
+                lastSentAngle = (int)(absoluteAzimuth);
+                String url = generateServerPath(lastSentAngle);
+
+                view.updateUrl(url);
                 openHttpConn(url);
               }
             }
@@ -125,10 +132,14 @@ public class MadeListener implements SensorEventListener {
     }
   }
   
-  private double normalize(double absoluteAzimuth2) {
-    absoluteAzimuth2=absoluteAzimuth2-134;
-    absoluteAzimuth2=Math.abs(absoluteAzimuth2);
-    return absoluteAzimuth2;
+  private double normalize(double angle) {
+	  angle=angle-130; //Adjust to the room
+	  angle=Math.abs(angle); //Remove negative values
+    if (angle>180)
+    	angle=180; //Remove angles greater than 180
+    else if (angle<90)
+    	angle=angle*1.15; //Adjust compression
+    return angle;
   }
 
   

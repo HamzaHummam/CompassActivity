@@ -23,6 +23,10 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.BitmapFactory.Options;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Paint.Style;
+import android.graphics.Rect;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -119,6 +123,9 @@ public class CompassActivity extends Activity {
         // diameter of the balls in meters
       
         private double lastAngle = 10;
+        private String lastUrl ="";
+        
+        
         private static final float sBallDiameter = 0.009f;
         private static final float sBallDiameter2 = sBallDiameter * sBallDiameter;
 
@@ -168,6 +175,7 @@ public class CompassActivity extends Activity {
                 mOneMinusFriction = 1.0f - sFriction + r;
             }
 
+         
             public void computePhysics(float sx, float sy, float dT, float dTC) {
                 // Force of gravity applied to our virtual object
                 final float m = 1000.0f; // mass of our virtual object
@@ -337,6 +345,15 @@ public class CompassActivity extends Activity {
             }
         }
 
+        public void updateAnlge(double newAngle)
+        {
+        	this.lastAngle = newAngle; 
+        }
+        
+        public void updateUrl(String newUrl)
+        {
+        	this.lastUrl = newUrl;
+        }
         public void startSimulation() {
             /*
              * It is not necessary to get accelerometer events at a very high
@@ -347,7 +364,7 @@ public class CompassActivity extends Activity {
              */
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
             //Made addded-------------------------
-            MadeListener ml = new MadeListener();
+            MadeListener ml = new MadeListener(mSimulationView);
              // Register this class as a listener for the accelerometer sensor
             mSensorManager.registerListener(ml, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                              SensorManager.SENSOR_DELAY_NORMAL);
@@ -436,13 +453,59 @@ public class CompassActivity extends Activity {
              * draw the background
              */
 
-            canvas.drawBitmap(mWood, 0, 0, null);
+            String rotatedAngle = +lastAngle+"¡";
+            String rotatedURL = "HTTP GET "+lastUrl;
+
+            //Display the angle
+           
+            Paint paint = new Paint(); 
+            paint.setColor(Color.BLUE); 
+            paint.setStyle(Style.FILL); 
+            canvas.drawPaint(paint); 
+
+
+            paint.setColor(Color.WHITE); 
+            paint.setTextSize(20); 
+            canvas.drawText(rotatedURL, 10, 25, paint); 
+            
+            /*
+            int xPos = (canvas.getWidth() / 2);
+            int yPos = (int) ((canvas.getHeight() / 2) - ((paint.descent() + paint.ascent()) / 2)) ; 
+            
+            
+            canvas.drawText(rotatedtext, xPos, xPos, paint); 
+            */
+            
+            int xx = 180;
+            int yy = 590;
+            paint.setColor(Color.GRAY);
+            paint.setTextSize(150);
+
+            Rect rect = new Rect();
+            paint.getTextBounds(rotatedAngle, 0, 1, rect);
+            canvas.translate(xx, yy);
+            paint.setStyle(Paint.Style.FILL);
+
+            canvas.translate(-xx, -yy);
+
+            paint.setColor(Color.YELLOW);
+            canvas.rotate(-90, xx + rect.exactCenterX(),yy + rect.exactCenterY());
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawText(rotatedAngle, xx, yy, paint);
+            
+            
+
+            
+
+            
+
+            //canvas.drawBitmap(mWood, 0, 0, null);
 
             /*
              * compute the new position of our object, based on accelerometer
              * data and present time.
              */
-
+            /*
             final ParticleSystem particleSystem = mParticleSystem;
             final long now = mSensorTimeStamp + (System.nanoTime() - mCpuTimeStamp);
             final float sx = mSensorX;
@@ -457,11 +520,7 @@ public class CompassActivity extends Activity {
             final Bitmap bitmap = mBitmap;
             final int count = particleSystem.getParticleCount();
             for (int i = 0; i < count; i++) {
-                /*
-                 * We transform the canvas so that the coordinate system matches
-                 * the sensors coordinate system with the origin in the center
-                 * of the screen and the unit is the meter.
-                 */
+ 
 
                 final float x = xc + particleSystem.getPosX(i) * xs;
                 final float y = yc - particleSystem.getPosY(i) * ys;
@@ -469,6 +528,7 @@ public class CompassActivity extends Activity {
             }
 
             // and make sure to redraw asap
+            */
             invalidate();
         }
 
