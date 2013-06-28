@@ -133,13 +133,21 @@ public class MadeListener implements SensorEventListener {
   }
   
   private double normalize(double angle) {
-	  angle=angle-130; //Adjust to the room
-	  angle=Math.abs(angle); //Remove negative values
-    if (angle>180)
-    	angle=180; //Remove angles greater than 180
-    else if (angle<90)
-    	angle=angle*1.15; //Adjust compression
-    return angle;
+	  int offset=131; //change it with the room
+	  if (angle >= offset && angle <= 189) //Weird behaviour in this region
+		  angle=0; 
+	  else
+	  {
+		  angle=angle-offset; //Adjust to the room
+		  angle=Math.abs(angle); //Remove negative values
+		  if (angle>180 && angle < 270)
+			angle=180; //Remove angles greater than 180 and show 180¡
+		  if (angle>=270)
+				angle=0; //Remove angles greater than 180 and show 0¡
+		  else if (angle<90)
+			angle=angle*1.15; //Adjust compression
+	  }
+	  return angle;
   }
 
   
