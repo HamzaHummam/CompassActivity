@@ -145,7 +145,7 @@ public class MadeListener implements SensorEventListener {
 		  if (angle>=270)
 				angle=0; //Remove angles greater than 180 and show 0¡
 		  else if (angle<90)
-			angle=angle*1.15; //Adjust compression
+			angle=angle*1.2; //Adjust compression
 	  }
 	  return angle;
   }
