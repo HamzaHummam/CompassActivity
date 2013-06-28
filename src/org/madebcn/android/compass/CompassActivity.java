@@ -16,7 +16,6 @@
 
 package org.madebcn.android.compass;
 
-import com.example.android.accelerometerplay.R;
 
 import android.app.Activity;
 import android.content.Context;
