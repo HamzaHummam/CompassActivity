@@ -17,12 +17,24 @@
 package org.madebcn.android.compass;
 
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.BitmapFactory.Options;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
@@ -35,9 +47,12 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Display;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
+import android.view.View.OnTouchListener;
 import android.view.WindowManager;
 
 /**
@@ -113,18 +128,21 @@ public class CompassActivity extends Activity {
          */
 
         // Stop the simulation
-        mSimulationView.stopSimulation();
 
         // and release our wake-lock
         mWakeLock.release();
     }
 
-    class SimulationView extends View implements SensorEventListener {
+    class SimulationView extends View implements OnTouchListener {
         // diameter of the balls in meters
       
         private double lastAngle = 10;
         private String lastUrl ="";
         
+        public Rect button1 = new Rect(10,10,10,10); // Define the dimensions of the button here
+        public Rect button2 = new Rect(20,20,20,20); // Define the dimensions of the button here
+
+        public boolean button1Clicked = false,button2Clicked = false;
         
         private static final float sBallDiameter = 0.009f;
         private static final float sBallDiameter2 = sBallDiameter * sBallDiameter;
@@ -152,198 +170,6 @@ public class CompassActivity extends Activity {
         private long mCpuTimeStamp;
         private float mHorizontalBound;
         private float mVerticalBound;
-        private final ParticleSystem mParticleSystem = new ParticleSystem();
-
-        /*
-         * Each of our particle holds its previous and current position, its
-         * acceleration. for added realism each particle has its own friction
-         * coefficient.
-         */
-        class Particle {
-            private float mPosX;
-            private float mPosY;
-            private float mAccelX;
-            private float mAccelY;
-            private float mLastPosX;
-            private float mLastPosY;
-            private float mOneMinusFriction;
-
-            Particle() {
-                // make each particle a bit different by randomizing its
-                // coefficient of friction
-                final float r = ((float) Math.random() - 0.5f) * 0.2f;
-                mOneMinusFriction = 1.0f - sFriction + r;
-            }
-
-         
-            public void computePhysics(float sx, float sy, float dT, float dTC) {
-                // Force of gravity applied to our virtual object
-                final float m = 1000.0f; // mass of our virtual object
-                final float gx = -sx * m;
-                final float gy = -sy * m;
-
-                /*
-                 * ·F = mA <=> A = ·F / m We could simplify the code by
-                 * completely eliminating "m" (the mass) from all the equations,
-                 * but it would hide the concepts from this sample code.
-                 */
-                final float invm = 1.0f / m;
-                final float ax = gx * invm;
-                final float ay = gy * invm;
-
-                /*
-                 * Time-corrected Verlet integration The position Verlet
-                 * integrator is defined as x(t+Æt) = x(t) + x(t) - x(t-Æt) +
-                 * a(t)Ætö2 However, the above equation doesn't handle variable
-                 * Æt very well, a time-corrected version is needed: x(t+Æt) =
-                 * x(t) + (x(t) - x(t-Æt)) * (Æt/Æt_prev) + a(t)Ætö2 We also add
-                 * a simple friction term (f) to the equation: x(t+Æt) = x(t) +
-                 * (1-f) * (x(t) - x(t-Æt)) * (Æt/Æt_prev) + a(t)Ætö2
-                 */
-                final float dTdT = dT * dT;
-                final float x = mPosX + mOneMinusFriction * dTC * (mPosX - mLastPosX) + mAccelX
-                        * dTdT;
-                final float y = mPosY + mOneMinusFriction * dTC * (mPosY - mLastPosY) + mAccelY
-                        * dTdT;
-                mLastPosX = mPosX;
-                mLastPosY = mPosY;
-                mPosX = x;
-                mPosY = y;
-                mAccelX = ax;
-                mAccelY = ay;
-            }
-
-            /*
-             * Resolving constraints and collisions with the Verlet integrator
-             * can be very simple, we simply need to move a colliding or
-             * constrained particle in such way that the constraint is
-             * satisfied.
-             */
-            public void resolveCollisionWithBounds() {
-                final float xmax = mHorizontalBound;
-                final float ymax = mVerticalBound;
-                final float x = mPosX;
-                final float y = mPosY;
-                if (x > xmax) {
-                    mPosX = xmax;
-                } else if (x < -xmax) {
-                    mPosX = -xmax;
-                }
-                if (y > ymax) {
-                    mPosY = ymax;
-                } else if (y < -ymax) {
-                    mPosY = -ymax;
-                }
-            }
-        }
-
-        /*
-         * A particle system is just a collection of particles
-         */
-        class ParticleSystem {
-            static final int NUM_PARTICLES = 15;
-            private Particle mBalls[] = new Particle[NUM_PARTICLES];
-
-            ParticleSystem() {
-                /*
-                 * Initially our particles have no speed or acceleration
-                 */
-                for (int i = 0; i < mBalls.length; i++) {
-                    mBalls[i] = new Particle();
-                }
-            }
-
-            /*
-             * Update the position of each particle in the system using the
-             * Verlet integrator.
-             */
-            private void updatePositions(float sx, float sy, long timestamp) {
-
-                final long t = timestamp;
-                if (mLastT != 0) {
-                    final float dT = (float) (t - mLastT) * (1.0f / 1000000000.0f);
-                    if (mLastDeltaT != 0) {
-                        final float dTC = dT / mLastDeltaT;
-                        final int count = mBalls.length;
-                        for (int i = 0; i < count; i++) {
-                            Particle ball = mBalls[i];
-                            ball.computePhysics(sx, sy, dT, dTC);
-                        }
-                    }
-                    mLastDeltaT = dT;
-                }
-                mLastT = t;
-            }
-
-            /*
-             * Performs one iteration of the simulation. First updating the
-             * position of all the particles and resolving the constraints and
-             * collisions.
-             */
-            public void update(float sx, float sy, long now) {
-                // update the system's positions
-                updatePositions(sx, sy, now);
-
-                // We do no more than a limited number of iterations
-                final int NUM_MAX_ITERATIONS = 10;
-
-                /*
-                 * Resolve collisions, each particle is tested against every
-                 * other particle for collision. If a collision is detected the
-                 * particle is moved away using a virtual spring of infinite
-                 * stiffness.
-                 */
-                boolean more = true;
-                final int count = mBalls.length;
-                for (int k = 0; k < NUM_MAX_ITERATIONS && more; k++) {
-                    more = false;
-                    for (int i = 0; i < count; i++) {
-                        Particle curr = mBalls[i];
-                        for (int j = i + 1; j < count; j++) {
-                            Particle ball = mBalls[j];
-                            float dx = ball.mPosX - curr.mPosX;
-                            float dy = ball.mPosY - curr.mPosY;
-                            float dd = dx * dx + dy * dy;
-                            // Check for collisions
-                            if (dd <= sBallDiameter2) {
-                                /*
-                                 * add a little bit of entropy, after nothing is
-                                 * perfect in the universe.
-                                 */
-                                dx += ((float) Math.random() - 0.5f) * 0.0001f;
-                                dy += ((float) Math.random() - 0.5f) * 0.0001f;
-                                dd = dx * dx + dy * dy;
-                                // simulate the spring
-                                final float d = (float) Math.sqrt(dd);
-                                final float c = (0.5f * (sBallDiameter - d)) / d;
-                                curr.mPosX -= dx * c;
-                                curr.mPosY -= dy * c;
-                                ball.mPosX += dx * c;
-                                ball.mPosY += dy * c;
-                                more = true;
-                            }
-                        }
-                        /*
-                         * Finally make sure the particle doesn't intersects
-                         * with the walls.
-                         */
-                        curr.resolveCollisionWithBounds();
-                    }
-                }
-            }
-
-            public int getParticleCount() {
-                return mBalls.length;
-            }
-
-            public float getPosX(int i) {
-                return mBalls[i].mPosX;
-            }
-
-            public float getPosY(int i) {
-                return mBalls[i].mPosY;
-            }
-        }
 
         public void updateAnlge(double newAngle)
         {
@@ -362,7 +188,7 @@ public class CompassActivity extends Activity {
              * of the acceleration. As an added benefit, we use less power and
              * CPU resources.
              */
-            mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
+           // mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
             //Made addded-------------------------
             MadeListener ml = new MadeListener(mSimulationView);
              // Register this class as a listener for the accelerometer sensor
@@ -373,9 +199,7 @@ public class CompassActivity extends Activity {
                              SensorManager.SENSOR_DELAY_NORMAL);
         }
 
-        public void stopSimulation() {
-            mSensorManager.unregisterListener(this);
-        }
+    
 
         public SimulationView(Context context) {
             super(context);
@@ -410,41 +234,7 @@ public class CompassActivity extends Activity {
             mVerticalBound = ((h / mMetersToPixelsY - sBallDiameter) * 0.5f);
         }
 
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() != Sensor.TYPE_ACCELEROMETER)
-                return;
-            /*
-             * record the accelerometer data, the event's timestamp as well as
-             * the current time. The latter is needed so we can calculate the
-             * "present" time during rendering. In this application, we need to
-             * take into account how the screen is rotated with respect to the
-             * sensors (which always return data in a coordinate space aligned
-             * to with the screen in its native orientation).
-             */
-
-            switch (mDisplay.getRotation()) {
-                case Surface.ROTATION_0:
-                    mSensorX = event.values[0];
-                    mSensorY = event.values[1];
-                    break;
-                case Surface.ROTATION_90:
-                    mSensorX = -event.values[1];
-                    mSensorY = event.values[0];
-                    break;
-                case Surface.ROTATION_180:
-                    mSensorX = -event.values[0];
-                    mSensorY = -event.values[1];
-                    break;
-                case Surface.ROTATION_270:
-                    mSensorX = event.values[1];
-                    mSensorY = -event.values[0];
-                    break;
-            }
-            
-            mSensorTimeStamp = event.timestamp;
-            mCpuTimeStamp = System.nanoTime();
-        }
+      
 
         @Override
         protected void onDraw(Canvas canvas) {
@@ -477,7 +267,7 @@ public class CompassActivity extends Activity {
             */
             
             int xx = 180;
-            int yy = 590;
+            int yy = 790;
             paint.setColor(Color.GRAY);
             paint.setTextSize(150);
 
@@ -493,47 +283,196 @@ public class CompassActivity extends Activity {
             paint.setStyle(Paint.Style.FILL);
             canvas.drawText(rotatedAngle, xx, yy, paint);
             
-            
 
-            
-
-            
-
-            //canvas.drawBitmap(mWood, 0, 0, null);
-
-            /*
-             * compute the new position of our object, based on accelerometer
-             * data and present time.
-             */
-            /*
-            final ParticleSystem particleSystem = mParticleSystem;
-            final long now = mSensorTimeStamp + (System.nanoTime() - mCpuTimeStamp);
-            final float sx = mSensorX;
-            final float sy = mSensorY;
-
-            particleSystem.update(sx, sy, now);
-
-            final float xc = mXOrigin;
-            final float yc = mYOrigin;
-            final float xs = mMetersToPixelsX;
-            final float ys = mMetersToPixelsY;
-            final Bitmap bitmap = mBitmap;
-            final int count = particleSystem.getParticleCount();
-            for (int i = 0; i < count; i++) {
- 
-
-                final float x = xc + particleSystem.getPosX(i) * xs;
-                final float y = yc - particleSystem.getPosY(i) * ys;
-                canvas.drawBitmap(bitmap, x, y, null);
-            }
-
-            // and make sure to redraw asap
-            */
             invalidate();
         }
 
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        }
+ 
+
+		@Override
+		public boolean onTouch(View arg0, MotionEvent event) {
+			if(button1.contains((int)event.getX(), (int)event.getY())) {
+				button1Clicked = true;
+			}   
+			else {
+				button1Clicked = false;
+				Log.v(TAG,"Clicked button1");
+			}
+			
+			if(button2.contains((int)event.getX(), (int)event.getY())) {
+				button2Clicked = true;
+				Log.v(TAG,"Clicked button2");
+			}   
+			else {
+				button2Clicked = false;
+			}   
+			return true;			
+		}
     }
+    
+    
+    public class MadeListener implements SensorEventListener {
+    	  
+    	  private static final String TAG = "MadeListener";
+
+    	  //Settings
+    	  public final int INTERVAL = (int) (0.5* 1000);
+    	  public final String SERVER_IP_ADDRESS = "192.168.1.46";
+    	  
+    	  
+    	  public long lastSentInfoTime;
+    	  private int lastSentAngle ;
+    	  
+    	 
+    	  float[] inR = new float[16];
+    	  float[] I = new float[16];
+    	  float[] gravity = new float[3];
+    	  float[] geomag = new float[3];
+    	  float[] orientVals = new float[3];
+    	  
+    	  double absoluteAzimuth;
+    	  double azimuth = 0;
+    	  double pitch = 0;
+    	  double roll = 0;
+    	  
+    	  private SimulationView view;
+    	  
+    	  String ip;
+    	  
+    	  public MadeListener(SimulationView view)
+    	  {  
+    		this.view=view;
+    	    lastSentInfoTime = System.currentTimeMillis();
+    	    lastSentAngle = 183;
+    	  }
+    	  
+    	  private String generateServerPath(double angle)
+    	  {
+    	    return "http://"+SERVER_IP_ADDRESS+":8080/"+(int)angle ;
+    	  }
+    	  
+    	  @Override
+    	  public void onAccuracyChanged(Sensor arg0, int arg1) {
+    	    // TODO Auto-generated method stub
+    	  }
+    	 
+
+    	  @Override
+    	  public void onSensorChanged(SensorEvent sensorEvent) {
+
+    	    // If the sensor data is unreliable return
+    	    if (sensorEvent.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE)
+    	    {    
+    	      //System.out.println("Status unreliable");
+    	      //return;
+    	    }
+
+    	    // Gets the value of the sensor that has been changed
+    	    switch (sensorEvent.sensor.getType()) {  
+    	        case Sensor.TYPE_ACCELEROMETER:
+    	            gravity = sensorEvent.values.clone();
+    	            //System.out.println("Accelerometer changed");
+
+    	            break;
+    	        case Sensor.TYPE_MAGNETIC_FIELD:
+    	            geomag = sensorEvent.values.clone();
+    	            //System.out.println("geomag : "+  geomag);
+    	            break;
+    	    }
+
+    	    // If gravity and geomag have values then find rotation matrix
+    	    if (gravity != null && geomag != null) {
+    	     /* System.out.println("gravity0="+  gravity[0]+ " geomag0="+geomag[0]);
+    	      System.out.println("gravity1="+  gravity[1]+ " geomag1="+geomag[1]);
+    	      System.out.println("gravity2="+  gravity[2]+ " geomag2="+geomag[2]);
+    	      */
+
+    	        // checks that the rotation matrix is found
+    	        boolean success = SensorManager.getRotationMatrix(inR, I, gravity, geomag);
+
+    	        if (success) {
+    	            SensorManager.getOrientation(inR, orientVals);
+    	            azimuth = Math.toDegrees(orientVals[0]);
+    	            pitch = Math.toDegrees(orientVals[1]);
+    	            roll = Math.toDegrees(orientVals[2]);
+    	            
+    	            absoluteAzimuth = (int) normalize((Math.round(azimuth)));
+    	            //Log.v(TAG, "Angle = "+absoluteAzimuth);
+    	            long elapseTime = System.currentTimeMillis() - lastSentInfoTime;
+
+    	            //Log.v(TAG,"elapseTime = "+ elapseTime);
+    	          
+    	            if (elapseTime >= INTERVAL)
+    	            {
+    	              lastSentInfoTime=System.currentTimeMillis(); 
+    	              int differenceWithOld = Math.abs((int) (absoluteAzimuth - lastSentAngle));
+    	              //Log.v(TAG, "old="+lastSentAngle+" now="+absoluteAzimuth+" difference="+differenceWithOld);
+    	              view.updateAnlge((int)absoluteAzimuth);
+    	              if(differenceWithOld>=4)
+    	              {
+    	                lastSentAngle = (int)(absoluteAzimuth);
+    	                String url = generateServerPath(lastSentAngle);
+
+    	                view.updateUrl(url);
+    	                openHttpConn(url);
+    	              }
+    	            }
+    	        }
+    	    }
+    	  }
+    	  
+    	  private double normalize(double angle) {
+    		  int offset=131+90; //change it with the room
+
+    		  Log.v(TAG,"original angle="+angle);
+    		  
+    		  if(angle < -120 && angle >-180)
+    		  {
+    			  angle = angle+360;
+    		  }
+    		  angle=angle-offset; //Adjust to the room
+
+    		  Log.v(TAG,"angle="+angle);
+    		  angle=Math.abs(angle); //Remove negative values
+    		  if (angle>180 && angle < 270)
+    			angle=180; //Remove angles greater than 180 and show 180¡
+    		  if (angle>=270)
+    				angle=0; //Remove angles greater than 180 and show 0¡
+    		  else if (angle<90)
+    			angle=angle*1.2; //Adjust compression
+
+    		  if(angle > 90 && angle < 180)
+    			  angle = angle *1.3;
+    		  return angle;
+    	  }
+
+    	  
+    	  public void openHttpConn(String url) {
+    	    Log.d(TAG, "Calling "+url);
+    	    HttpClient httpClient = new DefaultHttpClient();  
+
+    	    HttpGet httpGet = new HttpGet(url);
+    	    try {
+    	        HttpResponse response = httpClient.execute(httpGet);
+    	        StatusLine statusLine = response.getStatusLine();
+    	        if (statusLine.getStatusCode() == HttpStatus.SC_OK) {
+    	            HttpEntity entity = response.getEntity();
+    	            ByteArrayOutputStream out = new ByteArrayOutputStream();
+    	            entity.writeTo(out);
+    	            out.close();
+    	            String responseStr = out.toString();
+    	            // do something with response 
+    	        } else {
+    	            // handle bad response
+    	        }
+    	    } catch (ClientProtocolException e) {
+    	        // handle exception
+    	    } catch (IOException e) {
+    	        // handle exception
+    	    }
+    	  }
+    	  
+
+    	  
+    	}
 }
