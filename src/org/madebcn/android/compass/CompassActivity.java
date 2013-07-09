@@ -317,7 +317,7 @@ public class CompassActivity extends Activity {
 
     	  //Settings
     	  public final int INTERVAL = (int) (0.5* 1000);
-    	  public final String SERVER_IP_ADDRESS = "192.168.1.46";
+    	  public final String SERVER_IP_ADDRESS = "gerd.dnsd.me";
     	  
     	  
     	  public long lastSentInfoTime;
