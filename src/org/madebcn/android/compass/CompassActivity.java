@@ -422,7 +422,7 @@ public class CompassActivity extends Activity {
     	  }
     	  
     	  private double normalize(double angle) {
-    		  int offset=131+90; //change it with the room
+    		  /*int offset=131+90; //change it with the room
 
     		  Log.v(TAG,"original angle="+angle);
     		  
@@ -443,7 +443,8 @@ public class CompassActivity extends Activity {
 
     		  if(angle > 90 && angle < 180)
     			  angle = angle *1.3;
-    		  return angle;
+    			  */
+    		  return angle+180;
     	  }
 
     	  
