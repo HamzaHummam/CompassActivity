@@ -46,6 +46,7 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.os.StrictMode;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
@@ -54,6 +55,12 @@ import android.view.Surface;
 import android.view.View;
 import android.view.View.OnTouchListener;
 import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.EditText;
+import android.widget.Switch;
+import android.widget.TextView;
 
 /**
  * This is an example of using the accelerometer to integrate the device's
@@ -68,16 +75,19 @@ import android.view.WindowManager;
  */
 
 public class CompassActivity extends Activity {
-    private static final String TAG = "AccelerometerPlayActivity";
-
   
     private SimulationView mSimulationView;
     private SensorManager mSensorManager;
     private PowerManager mPowerManager;
-    private WindowManager mWindowManager;
-    private Display mDisplay;
     private WakeLock mWakeLock;
     
+    //UI elements
+    protected TextView angleField;
+    protected EditText serverField; //editText1
+    protected Button testButton;//button1
+    protected Switch switchButton; //Switch1
+    protected Button setangleButton;//button2
+    protected TextView statusField; //textview3
     
     /** Called when the activity is first created. */
     @Override
@@ -85,6 +95,9 @@ public class CompassActivity extends Activity {
         super.onCreate(savedInstanceState);
   
 
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+        
         // Get an instance of the SensorManager
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         
@@ -93,8 +106,6 @@ public class CompassActivity extends Activity {
         mPowerManager = (PowerManager) getSystemService(POWER_SERVICE);
 
         // Get an instance of the WindowManager
-        mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        mDisplay = mWindowManager.getDefaultDisplay();
 
         // Create a bright wake lock
         mWakeLock = mPowerManager.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK, getClass()
@@ -102,7 +113,18 @@ public class CompassActivity extends Activity {
 
         // instantiate our simulation view and set it as the activity's content
         mSimulationView = new SimulationView(this);
-        setContentView(mSimulationView);
+        setContentView(R.layout.main);
+        
+        angleField = (TextView) findViewById(R.id.textView2);
+        serverField = (EditText) findViewById(R.id.editText1); //editText1
+	    testButton = (Button) findViewById(R.id.button1);//button1
+	    switchButton =  (Switch) findViewById(R.id.switch1); //Switch1
+	    setangleButton=  (Button) findViewById(R.id.button2);//button2
+	    statusField=  (TextView) findViewById(R.id.textView3); //textview3
+	    
+	  
+
+        //setContentView(mSimulationView);
     }
 
     @Override
@@ -139,41 +161,14 @@ public class CompassActivity extends Activity {
         private double lastAngle = 10;
         private String lastUrl ="";
         
-        public Rect button1 = new Rect(10,10,10,10); // Define the dimensions of the button here
-        public Rect button2 = new Rect(20,20,20,20); // Define the dimensions of the button here
+   
 
-        public boolean button1Clicked = false,button2Clicked = false;
-        
-        private static final float sBallDiameter = 0.009f;
-        private static final float sBallDiameter2 = sBallDiameter * sBallDiameter;
-
-        // friction of the virtual table and air
-        private static final float sFriction = 0.2f;
-
-        private Sensor mAccelerometer;
-        private long mLastT;
-        private float mLastDeltaT;
-
-        private float mXDpi;
-        private float mYDpi;
-        private float mMetersToPixelsX;
-        private float mMetersToPixelsY;
-        private Bitmap mBitmap;
-        private Bitmap mWood;
-        private float mXOrigin;
-        private float mYOrigin;
-        private float mSensorX;
-        private float mSensorY;
-        private float mSensorZ;
-
-        private long mSensorTimeStamp;
-        private long mCpuTimeStamp;
-        private float mHorizontalBound;
-        private float mVerticalBound;
 
         public void updateAnlge(double newAngle)
         {
         	this.lastAngle = newAngle; 
+        	angleField.setText(""+newAngle);
+        	
         }
         
         public void updateUrl(String newUrl)
@@ -203,35 +198,22 @@ public class CompassActivity extends Activity {
 
         public SimulationView(Context context) {
             super(context);
-            mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
             DisplayMetrics metrics = new DisplayMetrics();
             getWindowManager().getDefaultDisplay().getMetrics(metrics);
-            mXDpi = metrics.xdpi;
-            mYDpi = metrics.ydpi;
-            mMetersToPixelsX = mXDpi / 0.0254f;
-            mMetersToPixelsY = mYDpi / 0.0254f;
+       
 
-            // rescale the ball so it's about 0.5 cm on screen
-            Bitmap ball = BitmapFactory.decodeResource(getResources(), R.drawable.ball);
-            final int dstWidth = (int) (sBallDiameter * mMetersToPixelsX + 0.5f);
-            final int dstHeight = (int) (sBallDiameter * mMetersToPixelsY + 0.5f);
-            mBitmap = Bitmap.createScaledBitmap(ball, dstWidth, dstHeight, true);
 
             Options opts = new Options();
             opts.inDither = true;
             opts.inPreferredConfig = Bitmap.Config.RGB_565;
-            mWood = BitmapFactory.decodeResource(getResources(), R.drawable.wood, opts);
         }
 
         @Override
         protected void onSizeChanged(int w, int h, int oldw, int oldh) {
             // compute the origin of the screen relative to the origin of
             // the bitmap
-            mXOrigin = (w - mBitmap.getWidth()) * 0.5f;
-            mYOrigin = (h - mBitmap.getHeight()) * 0.5f;
-            mHorizontalBound = ((w / mMetersToPixelsX - sBallDiameter) * 0.5f);
-            mVerticalBound = ((h / mMetersToPixelsY - sBallDiameter) * 0.5f);
+         
         }
 
       
@@ -242,7 +224,7 @@ public class CompassActivity extends Activity {
             /*
              * draw the background
              */
-
+        	  /*
             String rotatedAngle = +lastAngle+"¡";
             String rotatedURL = "HTTP GET "+lastUrl;
 
@@ -258,13 +240,13 @@ public class CompassActivity extends Activity {
             paint.setTextSize(20); 
             canvas.drawText(rotatedURL, 10, 25, paint); 
             
-            /*
+          
             int xPos = (canvas.getWidth() / 2);
             int yPos = (int) ((canvas.getHeight() / 2) - ((paint.descent() + paint.ascent()) / 2)) ; 
             
             
             canvas.drawText(rotatedtext, xPos, xPos, paint); 
-            */
+           
             
             int xx = 180;
             int yy = 790;
@@ -285,27 +267,14 @@ public class CompassActivity extends Activity {
             
 
             invalidate();
+             */
         }
 
  
 
 		@Override
 		public boolean onTouch(View arg0, MotionEvent event) {
-			if(button1.contains((int)event.getX(), (int)event.getY())) {
-				button1Clicked = true;
-			}   
-			else {
-				button1Clicked = false;
-				Log.v(TAG,"Clicked button1");
-			}
-			
-			if(button2.contains((int)event.getX(), (int)event.getY())) {
-				button2Clicked = true;
-				Log.v(TAG,"Clicked button2");
-			}   
-			else {
-				button2Clicked = false;
-			}   
+		
 			return true;			
 		}
     }
@@ -314,14 +283,15 @@ public class CompassActivity extends Activity {
     public class MadeListener implements SensorEventListener {
     	  
     	  private static final String TAG = "MadeListener";
-
+    	  protected int angleOffset =0;
     	  //Settings
     	  public final int INTERVAL = (int) (0.5* 1000);
-    	  public final String SERVER_IP_ADDRESS = "gerd.dnsd.me";
-    	  
+    	  public String serverPath = "";
+    	  protected boolean isOn = false;
     	  
     	  public long lastSentInfoTime;
     	  private int lastSentAngle ;
+    	  private int lastReadAngle; 
     	  
     	 
     	  float[] inR = new float[16];
@@ -330,7 +300,7 @@ public class CompassActivity extends Activity {
     	  float[] geomag = new float[3];
     	  float[] orientVals = new float[3];
     	  
-    	  double absoluteAzimuth;
+    	  int absoluteAzimuth;
     	  double azimuth = 0;
     	  double pitch = 0;
     	  double roll = 0;
@@ -344,11 +314,49 @@ public class CompassActivity extends Activity {
     		this.view=view;
     	    lastSentInfoTime = System.currentTimeMillis();
     	    lastSentAngle = 183;
+    	    
+    	    testButton.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    serverPath=serverField.getText().toString();
+                    Log.v(TAG,serverPath); //Todo coment
+                }
+            });
+    	    
+    	    setangleButton.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                	angleOffset = lastReadAngle;
+                    Log.v(TAG,"new offset set to "+ angleOffset); //Todo comment
+                }
+            });
+    	    
+    	    switchButton.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+				
+				@Override
+				public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+					isOn=isChecked;
+					if(!isChecked)
+						changeStatus("idle");
+				}
+			});
+    	    
     	  }
+    	  
+    	  protected int getCalibratedAngle(int originalAngle)
+    	  {
+    		  int newAngle = 0; //initialization, will be overwritten
+    		  
+    		   if ((originalAngle-angleOffset)<0)  
+    			   newAngle=(originalAngle-angleOffset)+360;
+    		   else 
+    			   newAngle = (originalAngle-angleOffset); 
+    		  
+    		  return newAngle;
+    	  }
+    	  
     	  
     	  private String generateServerPath(double angle)
     	  {
-    	    return "http://"+SERVER_IP_ADDRESS+":8080/"+(int)angle ;
+    	    return "http://"+serverPath+"/"+(int)angle ;
     	  }
     	  
     	  @Override
@@ -360,7 +368,7 @@ public class CompassActivity extends Activity {
     	  @Override
     	  public void onSensorChanged(SensorEvent sensorEvent) {
 
-    	    // If the sensor data is unreliable return
+    	    // If the sensor  is unreliable return
     	    if (sensorEvent.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE)
     	    {    
     	      //System.out.println("Status unreliable");
@@ -397,6 +405,11 @@ public class CompassActivity extends Activity {
     	            roll = Math.toDegrees(orientVals[2]);
     	            
     	            absoluteAzimuth = (int) normalize((Math.round(azimuth)));
+    	            lastReadAngle = absoluteAzimuth; //save the value 
+    	            absoluteAzimuth = getCalibratedAngle(absoluteAzimuth); //add remove offset
+    	            
+    	            //Log.v(TAG, "azimuth="+Math.round(azimuth)+" pitch="+pitch+" roll="+roll);
+
     	            //Log.v(TAG, "Angle = "+absoluteAzimuth);
     	            long elapseTime = System.currentTimeMillis() - lastSentInfoTime;
 
@@ -412,13 +425,22 @@ public class CompassActivity extends Activity {
     	              {
     	                lastSentAngle = (int)(absoluteAzimuth);
     	                String url = generateServerPath(lastSentAngle);
-
-    	                view.updateUrl(url);
-    	                openHttpConn(url);
+    	                
+    	                if(isOn)
+    	                {
+	    	                changeStatus("GET" +url);
+	    	                openHttpConn(url);
+    	                }
     	              }
     	            }
     	        }
     	    }
+    	  }
+    	  
+    	  public void changeStatus(String newStatus)
+    	  {
+              statusField.setText("Status : "+newStatus);
+
     	  }
     	  
     	  private double normalize(double angle) {
@@ -444,7 +466,9 @@ public class CompassActivity extends Activity {
     		  if(angle > 90 && angle < 180)
     			  angle = angle *1.3;
     			  */
-    		  return angle+180;
+    		  //if angle=angleOffset return 90 ;
+    		  
+    		  return (angle+180);
     	  }
 
     	  

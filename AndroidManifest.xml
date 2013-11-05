@@ -17,9 +17,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       android:versionCode="1"
       android:versionName="1.0" package="org.madebcn.android.compass">
-    <application android:icon="@drawable/icon" android:label="@string/app_name">
+    <application android:icon="@drawable/icon" android:label="MADE Helmet compass" android:logo="@drawable/madelogo">
         <activity android:name="org.madebcn.android.compass.CompassActivity"
-                  android:label="@string/app_name"
+                  android:label="MADE Helmet Compass"
                   android:screenOrientation="portrait" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,7 +30,7 @@
     </application>
 
 
-<uses-sdk android:minSdkVersion="5"></uses-sdk>
+<uses-sdk android:minSdkVersion="14"></uses-sdk>
 <uses-permission android:name="android.permission.VIBRATE"></uses-permission>
 <uses-permission android:name="android.permission.INTERNET"></uses-permission>
 <uses-permission android:name="android.permission.WAKE_LOCK"></uses-permission>

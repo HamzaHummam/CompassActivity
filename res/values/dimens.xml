@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="angleDimension80pt">80pt</dimen>
+    <dimen name="angleDimension60pt">60pt</dimen>
+    <dimen name="dimension10pt">10pt</dimen>
+    <dimen name="dimension7pt">7pt</dimen>
+</resources>
