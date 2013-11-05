@@ -336,6 +336,8 @@ public class CompassActivity extends Activity {
 					isOn=isChecked;
 					if(!isChecked)
 						changeStatus("idle");
+					else
+						changeStatus("waiting for new angle to send");
 				}
 			});
     	    

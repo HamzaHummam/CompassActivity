@@ -4,4 +4,5 @@
     <dimen name="angleDimension60pt">60pt</dimen>
     <dimen name="dimension10pt">10pt</dimen>
     <dimen name="dimension7pt">7pt</dimen>
+    <dimen name="dimension5pt">5pt</dimen>
 </resources>
