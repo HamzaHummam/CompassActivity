@@ -56,7 +56,7 @@
                 android:layout_weight="1"
                 android:ems="10"
                 android:text="http://server.local:8080"
-                android:textSize="@dimen/dimension5pt" >
+                android:textSize="@dimen/dimension7pt" >
 
                 <requestFocus />
             </EditText>
@@ -126,7 +126,7 @@
         android:id="@+id/button2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Set current angle to 0°" />
+        android:text="Set this angle to 0° (current --)" />
 
     <TextView
         android:id="@+id/textView3"

@@ -32,13 +32,8 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.BitmapFactory.Options;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Paint.Style;
-import android.graphics.Rect;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -49,12 +44,10 @@ import android.os.PowerManager.WakeLock;
 import android.os.StrictMode;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Display;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.View;
 import android.view.View.OnTouchListener;
-import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
@@ -283,10 +276,10 @@ public class CompassActivity extends Activity {
     public class MadeListener implements SensorEventListener {
     	  
     	  private static final String TAG = "MadeListener";
-    	  protected int angleOffset =0;
+    	  protected int angleOffset = 0;
     	  //Settings
     	  public final int INTERVAL = (int) (0.5* 1000);
-    	  public String serverPath = "";
+    	  public String serverPath = "http://davey.localhost:8080";
     	  protected boolean isOn = false;
     	  
     	  public long lastSentInfoTime;
@@ -313,34 +306,57 @@ public class CompassActivity extends Activity {
     	  {  
     		this.view=view;
     	    lastSentInfoTime = System.currentTimeMillis();
-    	    lastSentAngle = 183;
+    	    lastSentAngle = 0;
     	    
+    	    serverField.setText(serverPath);
     	    testButton.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                     serverPath=serverField.getText().toString();
-                    Log.v(TAG,serverPath); //Todo coment
+                    Log.v(TAG,serverPath); //TODO coment
+                    InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); 
+                    inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(),InputMethodManager.HIDE_NOT_ALWAYS);
                 }
             });
     	    
     	    setangleButton.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                 	angleOffset = lastReadAngle;
-                    Log.v(TAG,"new offset set to "+ angleOffset); //Todo comment
+                	String buttonText = "Set this angle to 0¡ (current "+lastReadAngle+")";
+                	setangleButton.setText(buttonText);
+                    Log.v(TAG,"new offset set to "+ angleOffset); //TODO comment
                 }
             });
-    	    
+
     	    switchButton.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 				
 				@Override
 				public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 					isOn=isChecked;
 					if(!isChecked)
+					{
 						changeStatus("idle");
+						serverField.setEnabled(true);
+						testButton.setEnabled(true);
+					}
 					else
+					{
+						serverField.setEnabled(false);
+						testButton.setEnabled(false);
 						changeStatus("waiting for new angle to send");
+					}
 				}
 			});
-    	    
+    	  }
+    	  
+    	  protected int normalize(long originalAngle)
+    	  {
+    		  long toRet=originalAngle;
+    		  if(originalAngle<0)
+    		  {
+    			  toRet=180 + Math.abs(-180-originalAngle);
+    		  }
+    		  
+    		  return (int)toRet;
     	  }
     	  
     	  protected int getCalibratedAngle(int originalAngle)
@@ -348,7 +364,7 @@ public class CompassActivity extends Activity {
     		  int newAngle = 0; //initialization, will be overwritten
     		  
     		   if ((originalAngle-angleOffset)<0)  
-    			   newAngle=(originalAngle-angleOffset)+360;
+    			   newAngle=(originalAngle-angleOffset)+180;
     		   else 
     			   newAngle = (originalAngle-angleOffset); 
     		  
@@ -358,7 +374,7 @@ public class CompassActivity extends Activity {
     	  
     	  private String generateServerPath(double angle)
     	  {
-    	    return "http://"+serverPath+"/"+(int)angle ;
+    	    return serverPath+"/"+(int)angle ;
     	  }
     	  
     	  @Override
@@ -392,27 +408,16 @@ public class CompassActivity extends Activity {
 
     	    // If gravity and geomag have values then find rotation matrix
     	    if (gravity != null && geomag != null) {
-    	     /* System.out.println("gravity0="+  gravity[0]+ " geomag0="+geomag[0]);
-    	      System.out.println("gravity1="+  gravity[1]+ " geomag1="+geomag[1]);
-    	      System.out.println("gravity2="+  gravity[2]+ " geomag2="+geomag[2]);
-    	      */
-
     	        // checks that the rotation matrix is found
     	        boolean success = SensorManager.getRotationMatrix(inR, I, gravity, geomag);
 
     	        if (success) {
     	            SensorManager.getOrientation(inR, orientVals);
     	            azimuth = Math.toDegrees(orientVals[0]);
-    	            pitch = Math.toDegrees(orientVals[1]);
-    	            roll = Math.toDegrees(orientVals[2]);
     	            
-    	            absoluteAzimuth = (int) normalize((Math.round(azimuth)));
-    	            lastReadAngle = absoluteAzimuth; //save the value 
-    	            absoluteAzimuth = getCalibratedAngle(absoluteAzimuth); //add remove offset
+    	            lastReadAngle = normalize(Math.round(azimuth));
+    	            absoluteAzimuth =  getCalibratedAngle(lastReadAngle);
     	            
-    	            //Log.v(TAG, "azimuth="+Math.round(azimuth)+" pitch="+pitch+" roll="+roll);
-
-    	            //Log.v(TAG, "Angle = "+absoluteAzimuth);
     	            long elapseTime = System.currentTimeMillis() - lastSentInfoTime;
 
     	            //Log.v(TAG,"elapseTime = "+ elapseTime);
@@ -422,15 +427,15 @@ public class CompassActivity extends Activity {
     	              lastSentInfoTime=System.currentTimeMillis(); 
     	              int differenceWithOld = Math.abs((int) (absoluteAzimuth - lastSentAngle));
     	              //Log.v(TAG, "old="+lastSentAngle+" now="+absoluteAzimuth+" difference="+differenceWithOld);
-    	              view.updateAnlge((int)absoluteAzimuth);
+    	              view.updateAnlge(normalize(absoluteAzimuth));
     	              if(differenceWithOld>=4)
     	              {
-    	                lastSentAngle = (int)(absoluteAzimuth);
+    	                lastSentAngle = absoluteAzimuth;
     	                String url = generateServerPath(lastSentAngle);
     	                
     	                if(isOn)
     	                {
-	    	                changeStatus("GET" +url);
+	    	                changeStatus("GET " +url);
 	    	                openHttpConn(url);
     	                }
     	              }
@@ -445,34 +450,7 @@ public class CompassActivity extends Activity {
 
     	  }
     	  
-    	  private double normalize(double angle) {
-    		  /*int offset=131+90; //change it with the room
-
-    		  Log.v(TAG,"original angle="+angle);
-    		  
-    		  if(angle < -120 && angle >-180)
-    		  {
-    			  angle = angle+360;
-    		  }
-    		  angle=angle-offset; //Adjust to the room
-
-    		  Log.v(TAG,"angle="+angle);
-    		  angle=Math.abs(angle); //Remove negative values
-    		  if (angle>180 && angle < 270)
-    			angle=180; //Remove angles greater than 180 and show 180¡
-    		  if (angle>=270)
-    				angle=0; //Remove angles greater than 180 and show 0¡
-    		  else if (angle<90)
-    			angle=angle*1.2; //Adjust compression
-
-    		  if(angle > 90 && angle < 180)
-    			  angle = angle *1.3;
-    			  */
-    		  //if angle=angleOffset return 90 ;
-    		  
-    		  return (angle+180);
-    	  }
-
+    	
     	  
     	  public void openHttpConn(String url) {
     	    Log.d(TAG, "Calling "+url);
@@ -490,13 +468,16 @@ public class CompassActivity extends Activity {
     	            String responseStr = out.toString();
     	            // do something with response 
     	        } else {
-    	            // handle bad response
+    	            statusField.setText("Status : Error comunicating with server");
     	        }
     	    } catch (ClientProtocolException e) {
-    	        // handle exception
+	            statusField.setText("Status : Error comunicating with server");
     	    } catch (IOException e) {
-    	        // handle exception
-    	    }
+	            statusField.setText("Status : Error comunicating with server");
+    	    } catch (IllegalArgumentException e) {
+	            statusField.setText("Status : Error comunicating with server");
+			}
+    	    
     	  }
     	  
 
