@@ -294,6 +294,8 @@ public class CompassActivity extends Activity {
     	  float[] orientVals = new float[3];
     	  
     	  int absoluteAzimuth;
+    	  int normalizedAzimuth;
+    	  int calibratedAzumuth;
     	  double azimuth = 0;
     	  double pitch = 0;
     	  double roll = 0;
@@ -362,11 +364,10 @@ public class CompassActivity extends Activity {
     	  protected int getCalibratedAngle(int originalAngle)
     	  {
     		  int newAngle = 0; //initialization, will be overwritten
-    		  
-    		   if ((originalAngle-angleOffset)<0)  
-    			   newAngle=(originalAngle-angleOffset)+180;
+    		   if (originalAngle < angleOffset )  
+    			   newAngle=360-(angleOffset-originalAngle);
     		   else 
-    			   newAngle = (originalAngle-angleOffset); 
+    			   newAngle = originalAngle-angleOffset; 
     		  
     		  return newAngle;
     	  }
@@ -415,23 +416,28 @@ public class CompassActivity extends Activity {
     	            SensorManager.getOrientation(inR, orientVals);
     	            azimuth = Math.toDegrees(orientVals[0]);
     	            
-    	            lastReadAngle = normalize(Math.round(azimuth));
-    	            absoluteAzimuth =  getCalibratedAngle(lastReadAngle);
+    	            absoluteAzimuth = (int) Math.round(azimuth); //Round to int -180 180
+    	            normalizedAzimuth = normalize(absoluteAzimuth); //now angle goes from 0 to 360
+   
+    	            calibratedAzumuth =  getCalibratedAngle(normalizedAzimuth); //apply the offset
     	            
+
+    	            lastReadAngle = normalizedAzimuth;
+
     	            long elapseTime = System.currentTimeMillis() - lastSentInfoTime;
 
-    	            //Log.v(TAG,"elapseTime = "+ elapseTime);
     	          
-    	            if (elapseTime >= INTERVAL)
-    	            {
+    	            if (elapseTime >= INTERVAL) {
     	              lastSentInfoTime=System.currentTimeMillis(); 
-    	              int differenceWithOld = Math.abs((int) (absoluteAzimuth - lastSentAngle));
+    	              int differenceWithOld = Math.abs(normalizedAzimuth - lastSentAngle);
     	              //Log.v(TAG, "old="+lastSentAngle+" now="+absoluteAzimuth+" difference="+differenceWithOld);
-    	              view.updateAnlge(normalize(absoluteAzimuth));
+    	              //Log.v(TAG,"absoluteAzimuth = "+ absoluteAzimuth+"normalized= "+normalizedAzimuth+" calibrated = "+calibratedAzumuth);
+
+    	              view.updateAnlge(calibratedAzumuth);
     	              if(differenceWithOld>=4)
     	              {
-    	                lastSentAngle = absoluteAzimuth;
-    	                String url = generateServerPath(lastSentAngle);
+    	                lastSentAngle = normalizedAzimuth;
+    	                String url = generateServerPath(calibratedAzumuth);
     	                
     	                if(isOn)
     	                {
