@@ -114,10 +114,7 @@ public class CompassActivity extends Activity {
 	    switchButton =  (Switch) findViewById(R.id.switch1); //Switch1
 	    setangleButton=  (Button) findViewById(R.id.button2);//button2
 	    statusField=  (TextView) findViewById(R.id.textView3); //textview3
-	    
-	  
 
-        //setContentView(mSimulationView);
     }
 
     @Override
@@ -276,7 +273,7 @@ public class CompassActivity extends Activity {
     public class MadeListener implements SensorEventListener {
     	  
     	  private static final String TAG = "MadeListener";
-    	  protected int angleOffset = 0;
+    	  public int angleOffsetz = 0;
     	  //Settings
     	  public final int INTERVAL = (int) (0.5* 1000);
     	  public String serverPath = "http://davey.localhost:8080";
@@ -322,10 +319,10 @@ public class CompassActivity extends Activity {
     	    
     	    setangleButton.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
-                	angleOffset = lastReadAngle;
+                	angleOffsetz = lastReadAngle;
                 	String buttonText = "Set this angle to 0¡ (current "+lastReadAngle+")";
                 	setangleButton.setText(buttonText);
-                    Log.v(TAG,"new offset set to "+ angleOffset); //TODO comment
+                    Log.v(TAG,"new offset set to "+ angleOffsetz); //TODO comment
                 }
             });
 
@@ -361,14 +358,14 @@ public class CompassActivity extends Activity {
     		  return (int)toRet;
     	  }
     	  
-    	  protected int getCalibratedAngle(int originalAngle)
+    	  protected int getCalibratedAngle(int originalAngle, int offset)
     	  {
     		  int newAngle = 0; //initialization, will be overwritten
-    		   if (originalAngle < angleOffset )  
-    			   newAngle=360-(angleOffset-originalAngle);
+    		   if (originalAngle < offset )  
+    			   newAngle=360-(offset-originalAngle);
     		   else 
-    			   newAngle = originalAngle-angleOffset; 
-    		  
+    			   newAngle = originalAngle-offset; 
+
     		  return newAngle;
     	  }
     	  
@@ -419,9 +416,6 @@ public class CompassActivity extends Activity {
     	            absoluteAzimuth = (int) Math.round(azimuth); //Round to int -180 180
     	            normalizedAzimuth = normalize(absoluteAzimuth); //now angle goes from 0 to 360
    
-    	            calibratedAzumuth =  getCalibratedAngle(normalizedAzimuth); //apply the offset
-    	            
-
     	            lastReadAngle = normalizedAzimuth;
 
     	            long elapseTime = System.currentTimeMillis() - lastSentInfoTime;
@@ -431,7 +425,8 @@ public class CompassActivity extends Activity {
     	              lastSentInfoTime=System.currentTimeMillis(); 
     	              int differenceWithOld = Math.abs(normalizedAzimuth - lastSentAngle);
     	              //Log.v(TAG, "old="+lastSentAngle+" now="+absoluteAzimuth+" difference="+differenceWithOld);
-    	              //Log.v(TAG,"absoluteAzimuth = "+ absoluteAzimuth+"normalized= "+normalizedAzimuth+" calibrated = "+calibratedAzumuth);
+      	              calibratedAzumuth = getCalibratedAngle(normalizedAzimuth,angleOffsetz); //apply the offset
+
 
     	              view.updateAnlge(calibratedAzumuth);
     	              if(differenceWithOld>=4)
