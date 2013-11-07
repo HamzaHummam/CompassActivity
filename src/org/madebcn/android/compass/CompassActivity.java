@@ -77,7 +77,6 @@ public class CompassActivity extends Activity {
     //UI elements
     protected TextView angleField;
     protected EditText serverField; //editText1
-    protected Button testButton;//button1
     protected Switch switchButton; //Switch1
     protected Button setangleButton;//button2
     protected TextView statusField; //textview3
@@ -110,7 +109,6 @@ public class CompassActivity extends Activity {
         
         angleField = (TextView) findViewById(R.id.textView2);
         serverField = (EditText) findViewById(R.id.editText1); //editText1
-	    testButton = (Button) findViewById(R.id.button1);//button1
 	    switchButton =  (Switch) findViewById(R.id.switch1); //Switch1
 	    setangleButton=  (Button) findViewById(R.id.button2);//button2
 	    statusField=  (TextView) findViewById(R.id.textView3); //textview3
@@ -276,7 +274,7 @@ public class CompassActivity extends Activity {
     	  public int angleOffsetz = 0;
     	  //Settings
     	  public final int INTERVAL = (int) (0.5* 1000);
-    	  public String serverPath = "http://davey.localhost:8080";
+    	  public String serverPath = "http://geekfreak.com:8080";
     	  protected boolean isOn = false;
     	  
     	  public long lastSentInfoTime;
@@ -308,21 +306,15 @@ public class CompassActivity extends Activity {
     	    lastSentAngle = 0;
     	    
     	    serverField.setText(serverPath);
-    	    testButton.setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) {
-                    serverPath=serverField.getText().toString();
-                    Log.v(TAG,serverPath); //TODO coment
-                    InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); 
-                    inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(),InputMethodManager.HIDE_NOT_ALWAYS);
-                }
-            });
-    	    
+    	   
+    	    setangleButton.setEnabled(false);
     	    setangleButton.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
-                	angleOffsetz = lastReadAngle;
-                	String buttonText = "Set this angle to 0¡ (current "+lastReadAngle+")";
+                	angleOffsetz = lastReadAngle-90;
+                	String buttonText = "Set this angle to 90¡ (current "+lastReadAngle+")";
                 	setangleButton.setText(buttonText);
                     Log.v(TAG,"new offset set to "+ angleOffsetz); //TODO comment
+                    openHttpConn(serverPath+"/reset");
                 }
             });
 
@@ -331,16 +323,21 @@ public class CompassActivity extends Activity {
 				@Override
 				public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 					isOn=isChecked;
+					InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); 
+	                inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(),InputMethodManager.HIDE_NOT_ALWAYS);
+                    
+
 					if(!isChecked)
 					{
 						changeStatus("idle");
 						serverField.setEnabled(true);
-						testButton.setEnabled(true);
+			    	    setangleButton.setEnabled(false);
 					}
 					else
 					{
+						serverPath=serverField.getText().toString();
 						serverField.setEnabled(false);
-						testButton.setEnabled(false);
+			    	    setangleButton.setEnabled(true);
 						changeStatus("waiting for new angle to send");
 					}
 				}
@@ -480,8 +477,6 @@ public class CompassActivity extends Activity {
 			}
     	    
     	  }
-    	  
-
-    	  
+    	 	  
     	}
 }
