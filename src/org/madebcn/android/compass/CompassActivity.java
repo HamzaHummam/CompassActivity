@@ -469,11 +469,11 @@ public class CompassActivity extends Activity {
     	            statusField.setText("Status : Error comunicating with server");
     	        }
     	    } catch (ClientProtocolException e) {
-	            statusField.setText("Status : Error comunicating with server");
+	            statusField.setText("Status : Error ClientProtocolException");
     	    } catch (IOException e) {
-	            statusField.setText("Status : Error comunicating with server");
+	            statusField.setText("Status : Error IOException");
     	    } catch (IllegalArgumentException e) {
-	            statusField.setText("Status : Error comunicating with server");
+	            statusField.setText("Status : Error IOException");
 			}
     	    
     	  }
